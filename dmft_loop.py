@@ -58,9 +58,9 @@ hk = hk.reshape(Nk, N_size_hk, N_size_hk)
 ### the lattice greens function
 iw_mesh = MeshImFreq(beta, 'Fermion', n_iw)
 lda_orb_names = [ i for i in range(0,N_size_hk) ]
-gf_struct = [("bl",lda_orb_names)]
-print 'gf_struct', gf_struct
-G0_iw_full = BlockGf(mesh=iw_mesh, gf_struct=gf_struct)
+gf_struct_full = [("bl",lda_orb_names)]
+print 'gf_struct_full', gf_struct_full
+G0_iw_full = BlockGf(mesh=iw_mesh, gf_struct=gf_struct_full)
 
 iw_vec_full = array([iw.value * np.eye(N_size_hk) for iw in iw_mesh])
 
@@ -214,3 +214,38 @@ for G_iw, G0_iw in zip(G_iw_list, G0_iw_list):
     Sigma << inverse(G0_iw) - inverse(G_iw)
 
     Sigma_iw_list.append(Sigma)
+
+
+#def downfold_G0(G0_iw_full_):
+def upfold_Sigma(Sigma_iw_list_):
+
+    #G0_iw_list = []
+    #t_ij_list = []
+    Sigma_iw_full_ = BlockGf(mesh=iw_mesh, gf_struct=gf_struct_full)
+
+    offset = 0
+    for Sigma_iw in Sigma_iw_list_:
+
+        #G = BlockGf(mesh=iw_mesh, gf_struct=gf_struct)
+
+        #print 'G["bl"].data.shape', G["bl"].data.shape
+        #print 'G0_iw_full_["bl"].data[:, 0:offset, 0:offset] ',  G0_iw_full_["bl"].data[:, 0:offset, 0:offset].shape
+
+        size_block = len(spin_names)*len(orb_names)
+
+        Sigma_iw_full_["bl"].data[:, offset:offset+size_block, offset:offset+size_block] = Sigma_iw["bl"].data[...]
+
+
+        #G0_iw_list.append(G)
+
+        #t_ij = hk_mean[offset:offset+size_block, offset:offset+size_block]
+
+        #t_ij_list.append(t_ij)
+        #print 't_ij'
+        #print  t_ij
+
+        offset = offset + size_block
+
+    return Sigma_iw_full_
+
+Sigma_iw_full_ = upfold_Sigma(Sigma_iw_list)
