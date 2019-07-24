@@ -66,7 +66,7 @@ iw_vec_full = array([iw.value * np.eye(N_size_hk) for iw in iw_mesh])
 idx_lst = list(range(len(spin_names) * len(orb_names)))
 gf_struct = [('bl', idx_lst)]
 
-def get_local_lattice_gf(mu_, iw_vec_full_, hk_, sigma_):
+def get_local_lattice_gf(mu_, hk_, sigma_):
 
     mu_mat = mu_ * np.eye(N_size_hk)
 
@@ -87,13 +87,13 @@ def get_local_lattice_gf(mu_, iw_vec_full_, hk_, sigma_):
     else:
         my_ks = range(rank*nk_per_core+rest, (rank+1)*nk_per_core + rest )
 
-    my_G0 = np.zeros_like(iw_vec_full_)
+    my_G0 = np.zeros_like(iw_vec_full)
 
     #print 'rank, my_ks', rank, my_ks
 
     for k in my_ks:
 
-        tmp = linalg.inv( iw_vec_full_ + mu_mat - hk_[k,:,:] - sigma_)
+        tmp = linalg.inv( iw_vec_full + mu_mat - hk_[k,:,:] - sigma_)
 
         my_G0 += tmp
 
@@ -104,7 +104,7 @@ def get_local_lattice_gf(mu_, iw_vec_full_, hk_, sigma_):
 
     return G0_iw_full
 
-G0_iw_full = get_local_lattice_gf(mu, iw_vec_full, hk, np.zeros_like(iw_vec_full))
+G0_iw_full = get_local_lattice_gf(mu, hk, np.zeros_like(iw_vec_full))
 
 def downfold_G0(G0_iw_full_):
 
@@ -169,11 +169,11 @@ def ctqmc_solver(h_int_, max_time_, G0_iw_):
 
     return S.G_iw
 
-def solve_aims():
+def solve_aims(G0_iw_list_):
 
     G_iw_list = []
 
-    for G0_iw in G0_iw_list:
+    for G0_iw in G0_iw_list_:
 
         print 'G0_iw', G0_iw
 
@@ -196,15 +196,15 @@ def solve_aims():
 
     return G_iw_list
 
-G_iw_list = solve_aims()
+G_iw_list = solve_aims(G0_iw_list)
 
 ### now i calculate sigma
 
-def calculate_sigmas():
+def calculate_sigmas(G_iw_list_, G0_iw_list_):
 
     Sigma_iw_list = []
 
-    for G_iw, G0_iw in zip(G_iw_list, G0_iw_list):
+    for G_iw, G0_iw in zip(G_iw_list_, G0_iw_list_):
 
         print ' '
         print 'G_iw', G_iw
@@ -218,7 +218,7 @@ def calculate_sigmas():
 
     return Sigma_iw_list
 
-Sigma_iw_list = calculate_sigmas()
+Sigma_iw_list = calculate_sigmas(G_iw_list, G0_iw_list)
 
 ### upfold sigma
 
