@@ -110,32 +110,37 @@ hk_mean = hk.mean(axis=0)
 idx_lst = list(range(len(spin_names) * len(orb_names)))
 gf_struct = [('bl', idx_lst)]
 
-G0_iw_list = []
-t_ij_list = []
+def downfold_G0(G0_iw_full_):
 
-offset = 0
-for i in range(0,N_atoms):
+    G0_iw_list = []
+    t_ij_list = []
 
-    G = BlockGf(mesh=iw_mesh, gf_struct=gf_struct)
+    offset = 0
+    for i in range(0,N_atoms):
 
-    #print 'G["bl"].data.shape', G["bl"].data.shape
-    #print 'G0_iw_full["bl"].data[:, 0:offset, 0:offset] ',  G0_iw_full["bl"].data[:, 0:offset, 0:offset].shape
+        G = BlockGf(mesh=iw_mesh, gf_struct=gf_struct)
 
-    size_block = len(spin_names)*len(orb_names)
+        #print 'G["bl"].data.shape', G["bl"].data.shape
+        #print 'G0_iw_full_["bl"].data[:, 0:offset, 0:offset] ',  G0_iw_full_["bl"].data[:, 0:offset, 0:offset].shape
 
-    G["bl"].data[...] = G0_iw_full["bl"].data[:, offset:offset+size_block, offset:offset+size_block]
+        size_block = len(spin_names)*len(orb_names)
+
+        G["bl"].data[...] = G0_iw_full_["bl"].data[:, offset:offset+size_block, offset:offset+size_block]
 
 
-    G0_iw_list.append(G)
+        G0_iw_list.append(G)
 
-    t_ij = hk_mean[offset:offset+size_block, offset:offset+size_block]
+        t_ij = hk_mean[offset:offset+size_block, offset:offset+size_block]
 
-    t_ij_list.append(t_ij)
-    #print 't_ij'
-    #print  t_ij
+        t_ij_list.append(t_ij)
+        #print 't_ij'
+        #print  t_ij
 
-    offset = offset + size_block
+        offset = offset + size_block
 
+    return G0_iw_list, t_ij_list
+
+G0_iw_list, t_ij_list = downfold_G0(G0_iw_full)
 
 def solve_aim(beta, gf_struct, n_iw, h_int, max_time, G0_iw):
 
