@@ -111,7 +111,7 @@ idx_lst = list(range(len(spin_names) * len(orb_names)))
 gf_struct = [('bl', idx_lst)]
 
 G0_list = []
-muimp_list = []
+t_ij_list = []
 
 offset = 0
 for i in range(0,N_atoms):
@@ -128,11 +128,11 @@ for i in range(0,N_atoms):
 
     G0_list.append(G)
 
-    muimp = hk_mean[offset:offset+size_block, offset:offset+size_block]
+    t_ij = hk_mean[offset:offset+size_block, offset:offset+size_block]
 
-    muimp_list.append(muimp)
-    #print 'muimp'
-    #print  muimp
+    t_ij_list.append(t_ij)
+    #print 't_ij'
+    #print  t_ij
 
     offset = offset + size_block
 
@@ -176,7 +176,7 @@ for G0_iw in G0_list:
     c_dag_vec = matrix([[c_dag('bl', idx) for idx in idx_lst]])
     c_vec =     matrix([[c('bl', idx)] for idx in idx_lst])
 
-    h_0_mat = muimp_list[0]
+    h_0_mat = t_ij_list[0]
     h_0 = (c_dag_vec * h_0_mat * c_vec)[0,0]
 
     #print 'h_0', h_0
