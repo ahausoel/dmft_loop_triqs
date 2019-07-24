@@ -137,7 +137,7 @@ def downfold_G0(G0_iw_full_):
 
 G0_iw_list, t_ij_list = downfold_G0(G0_iw_full)
 
-def solve_aim(h_int_, max_time_, G0_iw_):
+def ctqmc_solver(h_int_, max_time_, G0_iw_):
 
     # --------- Construct the CTHYB solver ----------
     constr_params = {
@@ -169,29 +169,34 @@ def solve_aim(h_int_, max_time_, G0_iw_):
 
     return S.G_iw
 
-G_iw_list = []
+def solve_aims():
 
-for G0_iw in G0_iw_list:
+    G_iw_list = []
 
-    print 'G0_iw', G0_iw
+    for G0_iw in G0_iw_list:
 
-    # ==== Local Hamiltonian ====
-    c_dag_vec = matrix([[c_dag('bl', idx) for idx in idx_lst]])
-    c_vec =     matrix([[c('bl', idx)] for idx in idx_lst])
+        print 'G0_iw', G0_iw
 
-    h_0_mat = t_ij_list[0]
-    h_0 = (c_dag_vec * h_0_mat * c_vec)[0,0]
+        # ==== Local Hamiltonian ====
+        c_dag_vec = matrix([[c_dag('bl', idx) for idx in idx_lst]])
+        c_vec =     matrix([[c('bl', idx)] for idx in idx_lst])
 
-    # ==== Interacting Hamiltonian ====
-    Umat, Upmat = U_matrix_kanamori(len(orb_names), U_int=U, J_hund=J)
-    op_map = { (s,o): ('bl',i) for i, (s,o) in enumerate(product(spin_names, orb_names)) }
-    h_int = h_int_kanamori(spin_names, orb_names, Umat, Upmat, J, off_diag=True, map_operator_structure=op_map)
+        h_0_mat = t_ij_list[0]
+        h_0 = (c_dag_vec * h_0_mat * c_vec)[0,0]
 
-    max_time = -1
-    G_iw = solve_aim(h_int, max_time, G0_iw)
+        # ==== Interacting Hamiltonian ====
+        Umat, Upmat = U_matrix_kanamori(len(orb_names), U_int=U, J_hund=J)
+        op_map = { (s,o): ('bl',i) for i, (s,o) in enumerate(product(spin_names, orb_names)) }
+        h_int = h_int_kanamori(spin_names, orb_names, Umat, Upmat, J, off_diag=True, map_operator_structure=op_map)
 
-    G_iw_list.append(G_iw)
+        max_time = -1
+        G_iw = ctqmc_solver(h_int, max_time, G0_iw)
 
+        G_iw_list.append(G_iw)
+
+        return G_iw_list
+
+G_iw_list = solve_aims()
 
 ### now i calculate sigma
 
