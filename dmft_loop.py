@@ -238,6 +238,20 @@ G0_iw_full = get_local_lattice_gf(mu, hk, np.zeros_like(iw_vec_full))
 
 G0_iw_list, t_ij_list = downfold_G0(G0_iw_full)
 
+for n, G0_iw in enumerate(G0_iw_list):
+
+    print 'atom:', n
+    print 'G0_iw', G0_iw
+
+    filename = "data/" + "G0_iw___atom_" + str(n) +".h5"
+    print 'filename', filename
+
+    dataname = "G0_iw___atom_" + str(n)
+
+    from pytriqs.archive import HDFArchive
+    with HDFArchive(filename,'w') as results:
+        results[dataname] = G0_iw
+
 G_iw_list = solve_aims(G0_iw_list)
 
 Sigma_iw_list = calculate_sigmas(G_iw_list, G0_iw_list)
