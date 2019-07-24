@@ -104,7 +104,6 @@ def get_local_lattice_gf(mu_, hk_, sigma_):
 
     return G0_iw_full
 
-G0_iw_full = get_local_lattice_gf(mu, hk, np.zeros_like(iw_vec_full))
 
 def downfold_G0(G0_iw_full_):
 
@@ -135,7 +134,6 @@ def downfold_G0(G0_iw_full_):
 
     return G0_iw_list, t_ij_list
 
-G0_iw_list, t_ij_list = downfold_G0(G0_iw_full)
 
 def ctqmc_solver(h_int_, max_time_, G0_iw_):
 
@@ -196,7 +194,6 @@ def solve_aims(G0_iw_list_):
 
     return G_iw_list
 
-G_iw_list = solve_aims(G0_iw_list)
 
 ### now i calculate sigma
 
@@ -218,7 +215,6 @@ def calculate_sigmas(G_iw_list_, G0_iw_list_):
 
     return Sigma_iw_list
 
-Sigma_iw_list = calculate_sigmas(G_iw_list, G0_iw_list)
 
 ### upfold sigma
 
@@ -236,5 +232,14 @@ def upfold_Sigma(Sigma_iw_list_):
         offset = offset + size_block
 
     return Sigma_iw_full_
+
+
+G0_iw_full = get_local_lattice_gf(mu, hk, np.zeros_like(iw_vec_full))
+
+G0_iw_list, t_ij_list = downfold_G0(G0_iw_full)
+
+G_iw_list = solve_aims(G0_iw_list)
+
+Sigma_iw_list = calculate_sigmas(G_iw_list, G0_iw_list)
 
 Sigma_iw_full = upfold_Sigma(Sigma_iw_list)
