@@ -110,7 +110,7 @@ hk_mean = hk.mean(axis=0)
 idx_lst = list(range(len(spin_names) * len(orb_names)))
 gf_struct = [('bl', idx_lst)]
 
-G0_list = []
+G0_iw_list = []
 t_ij_list = []
 
 offset = 0
@@ -126,7 +126,7 @@ for i in range(0,N_atoms):
     G["bl"].data[...] = G0_iw_full["bl"].data[:, offset:offset+size_block, offset:offset+size_block]
 
 
-    G0_list.append(G)
+    G0_iw_list.append(G)
 
     t_ij = hk_mean[offset:offset+size_block, offset:offset+size_block]
 
@@ -154,8 +154,9 @@ def solve_aim(beta, gf_struct, n_iw, h_int, max_time, G0_iw):
     # --------- Solve! ----------
     solve_params = {
             'h_int' : h_int,
-            'n_warmup_cycles' : 1000,
-            'n_cycles' : 1000000000,
+            'n_warmup_cycles' : 100,
+            #'n_cycles' : 1000000000,
+            'n_cycles' : 10,
             'max_time' : max_time,
             'length_cycle' : 100,
             'move_double' : True,
@@ -168,7 +169,9 @@ def solve_aim(beta, gf_struct, n_iw, h_int, max_time, G0_iw):
 
     return S.G_iw
 
-for G0_iw in G0_list:
+G_iw_list = []
+
+for G0_iw in G0_iw_list:
 
     print 'G0_iw', G0_iw
 
@@ -185,5 +188,24 @@ for G0_iw in G0_list:
     op_map = { (s,o): ('bl',i) for i, (s,o) in enumerate(product(spin_names, orb_names)) }
     h_int = h_int_kanamori(spin_names, orb_names, Umat, Upmat, J, off_diag=True, map_operator_structure=op_map)
 
-    max_time = 20
+    max_time = -1
     G_iw = solve_aim(beta, gf_struct, n_iw, h_int, max_time, G0_iw)
+
+    G_iw_list.append(G_iw)
+
+
+### now i calculate sigma
+
+Sigma_iw_list = []
+
+for G_iw, G0_iw in zip(G_iw_list, G0_iw_list):
+
+    print ' '
+    print 'G_iw', G_iw
+    print 'G0_iw', G0_iw
+
+    Sigma = G0_iw.copy()
+
+    Sigma << inverse(G0_iw) - inverse(G_iw)
+
+    Sigma_iw_list.append(Sigma)
