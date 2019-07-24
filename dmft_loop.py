@@ -225,29 +225,3 @@ for G0_iw in G0_list:
 
     max_time = 10
     G_iw = solve_aim(beta, gf_struct, n_iw, h_int, max_time, G0_iw)
-
-    ## --------- Construct the CTHYB solver ----------
-    #constr_params = {
-            #'beta' : beta,
-            #'gf_struct' : gf_struct,
-            #'n_iw' : n_iw,
-            #'n_tau' : 100000
-            #}
-    #S = Solver(**constr_params)
-
-    ## --------- Initialize G0_iw ----------
-    #S.G0_iw << G0_iw
-
-    ## --------- Solve! ----------
-    #solve_params = {
-            #'h_int' : h_int,
-            #'n_warmup_cycles' : 1000,
-            #'n_cycles' : 1000000000,
-            #'max_time' : max_time,
-            #'length_cycle' : 100,
-            #'move_double' : True,
-            #'measure_pert_order' : True
-            #}
-    ##start = time.time()
-    #S.solve(**solve_params)
-    ##end = time.time()
