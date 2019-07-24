@@ -240,19 +240,14 @@ G0_iw_list, t_ij_list = downfold_G0(G0_iw_full)
 
 if MPI.COMM_WORLD.Get_rank() == 0:
 
-    for n, G0_iw in enumerate(G0_iw_list):
+    filename = "data/" + "iteration_0"
+    print 'filename', filename
 
-        print 'atom:', n
-        print 'G0_iw', G0_iw
+    dataname = "G0_iw"
 
-        filename = "data/" + "G0_iw___atom_" + str(n) +".h5"
-        print 'filename', filename
-
-        dataname = "G0_iw___atom_" + str(n)
-
-        from pytriqs.archive import HDFArchive
-        with HDFArchive(filename,'w') as results:
-            results[dataname] = G0_iw
+    from pytriqs.archive import HDFArchive
+    with HDFArchive(filename,'w') as results:
+        results[dataname] = G0_iw_list
 
 G_iw_list = solve_aims(G0_iw_list)
 
