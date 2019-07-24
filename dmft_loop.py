@@ -194,7 +194,7 @@ def solve_aims():
 
         G_iw_list.append(G_iw)
 
-        return G_iw_list
+    return G_iw_list
 
 G_iw_list = solve_aims()
 
