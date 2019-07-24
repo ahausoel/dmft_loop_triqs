@@ -47,7 +47,7 @@ n_iw = int(100 * beta)
 iw_mesh = MeshImFreq(beta, 'Fermion', n_iw)
 
 ### the hamiltonian
-hkfile = file("/home/hpc/pr94vu/di73miv/work/RECHNUNGEN/benchmarks/dmft_loop/wannier90_hk_2layers_t2gbasis.dat_")
+hkfile = file("/home/hpc/pr94vu/di73miv/work/RECHNUNGEN/benchmarks/dmft_loop/wannier90_hk_2layers_t2gbasis.dat")
 hk, kpoints = read_hamiltonian(hkfile, spin_orbit=True)
 
 ### the lattice properties
@@ -238,19 +238,21 @@ G0_iw_full = get_local_lattice_gf(mu, hk, np.zeros_like(iw_vec_full))
 
 G0_iw_list, t_ij_list = downfold_G0(G0_iw_full)
 
-for n, G0_iw in enumerate(G0_iw_list):
+if MPI.COMM_WORLD.Get_rank() == 0:
 
-    print 'atom:', n
-    print 'G0_iw', G0_iw
+    for n, G0_iw in enumerate(G0_iw_list):
 
-    filename = "data/" + "G0_iw___atom_" + str(n) +".h5"
-    print 'filename', filename
+        print 'atom:', n
+        print 'G0_iw', G0_iw
 
-    dataname = "G0_iw___atom_" + str(n)
+        filename = "data/" + "G0_iw___atom_" + str(n) +".h5"
+        print 'filename', filename
 
-    from pytriqs.archive import HDFArchive
-    with HDFArchive(filename,'w') as results:
-        results[dataname] = G0_iw
+        dataname = "G0_iw___atom_" + str(n)
+
+        from pytriqs.archive import HDFArchive
+        with HDFArchive(filename,'w') as results:
+            results[dataname] = G0_iw
 
 G_iw_list = solve_aims(G0_iw_list)
 
