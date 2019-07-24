@@ -237,4 +237,4 @@ def upfold_Sigma(Sigma_iw_list_):
 
     return Sigma_iw_full_
 
-Sigma_iw_full_ = upfold_Sigma(Sigma_iw_list)
+Sigma_iw_full = upfold_Sigma(Sigma_iw_list)
