@@ -200,19 +200,25 @@ G_iw_list = solve_aims()
 
 ### now i calculate sigma
 
-Sigma_iw_list = []
+def calculate_sigmas():
 
-for G_iw, G0_iw in zip(G_iw_list, G0_iw_list):
+    Sigma_iw_list = []
 
-    print ' '
-    print 'G_iw', G_iw
-    print 'G0_iw', G0_iw
+    for G_iw, G0_iw in zip(G_iw_list, G0_iw_list):
 
-    Sigma = G0_iw.copy()
+        print ' '
+        print 'G_iw', G_iw
+        print 'G0_iw', G0_iw
 
-    Sigma << inverse(G0_iw) - inverse(G_iw)
+        Sigma = G0_iw.copy()
 
-    Sigma_iw_list.append(Sigma)
+        Sigma << inverse(G0_iw) - inverse(G_iw)
+
+        Sigma_iw_list.append(Sigma)
+
+    return Sigma_iw_list
+
+Sigma_iw_list = calculate_sigmas()
 
 ### upfold sigma
 
