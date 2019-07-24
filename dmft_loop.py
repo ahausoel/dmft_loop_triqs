@@ -28,7 +28,8 @@ from auxiliaries.input import read_hamiltonian
 
 import numpy as np
 
-### system parameters
+#######################################################################
+### here come the global parameters
 beta = 10.0
 mu = 0.0
 
@@ -38,8 +39,9 @@ J = 0.5
 N_atoms = 4
 N_bands = 3
 
-spin_names = ['up', 'dn']       # The spins
-orb_names = [0, 1, 2]           # The orbitals
+### still assumed that all atoms have same size and no noninteracting orbitals
+spin_names = ['up', 'dn']
+orb_names = [0, 1, 2]
 
 n_iw = int(100 * beta)
 n_orb = len(orb_names)
@@ -49,8 +51,8 @@ hkfile = file("/home/hpc/pr94vu/di73miv/work/RECHNUNGEN/benchmarks/dmft_loop/wan
 hk, kpoints = read_hamiltonian(hkfile, spin_orbit=True)
 
 Nk = kpoints.shape[0]
-N_lda_bands = hk.shape[1]
-N_size_hk = N_lda_bands*2
+tmp = hk.shape[1]
+N_size_hk = tmp*2
 hk = hk.reshape(Nk, N_size_hk, N_size_hk)
 
 ### the lattice greens function
@@ -60,42 +62,36 @@ gf_struct = [("bl",lda_orb_names)]
 print 'gf_struct', gf_struct
 G0_iw_full = BlockGf(mesh=iw_mesh, gf_struct=gf_struct)
 
-#for name, block in G0_iw_full:
-    #print 'name, block', name, block
+iw_vec_full = array([iw.value * np.eye(N_size_hk) for iw in iw_mesh])
 
-iw_vec = array([iw.value * np.eye(N_size_hk) for iw in iw_mesh])
+def get_local_lattice_gf(mu_, iw_vec_full_, hk_, sigma_):
 
-def get_local_lattice_gf(mu, iw_vec, hk, sigma):
-
-    mu_mat = mu * np.eye(N_size_hk)
+    mu_mat = mu_ * np.eye(N_size_hk)
 
     world = MPI.COMM_WORLD
     rank = world.Get_rank()
     size = world.Get_size()
-    print 'rank', rank
+    #print 'rank', rank
 
     nk_per_core = int(Nk)/int(size)
     rest = int(Nk)%int(size)
 
-    print 'size', size
-    print 'nk_per_core ', nk_per_core 
-    print 'rest', rest
+    #print 'size', size
+    #print 'nk_per_core ', nk_per_core 
+    #print 'rest', rest
 
     if rank < rest:
         my_ks = range(rank*nk_per_core+rank, (rank+1)*nk_per_core + rank +1)
     else:
         my_ks = range(rank*nk_per_core+rest, (rank+1)*nk_per_core + rest )
 
-    my_G0 = np.zeros_like(iw_vec)
+    my_G0 = np.zeros_like(iw_vec_full_)
 
-    print 'rank, my_ks', rank, my_ks
+    #print 'rank, my_ks', rank, my_ks
 
-    #for asdf, k in enumerate(hk):
     for k in my_ks:
 
-        print 'rank, k', rank, k
-
-        tmp = linalg.inv( iw_vec + mu_mat - hk[k,:,:] - sigma)
+        tmp = linalg.inv( iw_vec_full_ + mu_mat - hk_[k,:,:] - sigma_)
 
         my_G0 += tmp
 
@@ -106,28 +102,7 @@ def get_local_lattice_gf(mu, iw_vec, hk, sigma):
 
     return G0_iw_full
 
-G0_iw_full = get_local_lattice_gf(mu, iw_vec, hk, np.zeros_like(iw_vec))
-
-#### writeout the G0
-#iw_array = []
-
-#for i in iw_mesh:
-    ##print 'i', i.value
-    #iw_array.append(i.value)
-
-##print 'iw_array', iw_array
-##print 'type(iw_array)', type(iw_array)
-
-#iw_array = np.asarray(iw_array)
-#print 'iw_array.shape', iw_array.shape
-
-#data = np.column_stack((np.imag(iw_array), np.real(G0_iw_full["bl"].data[:,0,0]), np.imag(G0_iw_full["bl"].data[:,0,0])))
-#np.savetxt("g0_00.dat", data)
-#data = np.column_stack((np.imag(iw_array), np.real(G0_iw_full["bl"].data[:,1,0]), np.imag(G0_iw_full["bl"].data[:,1,0])))
-#np.savetxt("g0_10.dat", data)
-#data = np.column_stack((np.imag(iw_array), np.real(G0_iw_full["bl"].data[:,2,0]), np.imag(G0_iw_full["bl"].data[:,2,0])))
-#np.savetxt("g0_20.dat", data)
-
+G0_iw_full = get_local_lattice_gf(mu, iw_vec_full, hk, np.zeros_like(iw_vec_full))
 
 hk_mean = hk.mean(axis=0)
 
@@ -161,13 +136,6 @@ for i in range(0,N_atoms):
 
     offset = offset + size_block
 
-
-#print 'G0_list', G0_list
- 
-#for G0 in G0_list:
-    #print 'G0', G0
-
-#exit()
 
 def solve_aim(beta, gf_struct, n_iw, h_int, max_time, G0_iw):
 
@@ -213,15 +181,9 @@ for G0_iw in G0_list:
 
     #print 'h_0', h_0
 
-    h_loc = h_0
-    #h_int = 0.000000000001 * c_dag("bl", 0) * c("bl", 0) * c_dag("bl", 1) * c("bl", 1)
     Umat, Upmat = U_matrix_kanamori(len(orb_names), U_int=U, J_hund=J)
     op_map = { (s,o): ('bl',i) for i, (s,o) in enumerate(product(spin_names, orb_names)) }
     h_int = h_int_kanamori(spin_names, orb_names, Umat, Upmat, J, off_diag=True, map_operator_structure=op_map)
-    #h_loc = h_0 + h_int
 
-    #sys.path.append("/home/hpc/pr94vu/di73miv/work/RECHNUNGEN/benchmarks/dmft_loop")
-    #from triqs_cthyb_solve import solve_aim
-
-    max_time = 10
+    max_time = 20
     G_iw = solve_aim(beta, gf_struct, n_iw, h_int, max_time, G0_iw)
