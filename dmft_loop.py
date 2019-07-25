@@ -17,6 +17,7 @@ import numpy.linalg as linalg
 from triqs_cthyb import Solver, version
 
 from pytriqs.statistics.histograms import Histogram
+from pytriqs.archive import HDFArchive
 
 #import pytriqs.utility 
 from mpi4py import MPI
@@ -187,7 +188,7 @@ def solve_aims(G0_iw_list_):
         op_map = { (s,o): ('bl',i) for i, (s,o) in enumerate(product(spin_names, orb_names)) }
         h_int = h_int_kanamori(spin_names, orb_names, Umat, Upmat, J, off_diag=True, map_operator_structure=op_map)
 
-        max_time = -1
+        max_time = 125
         G_iw = ctqmc_solver(h_int, max_time, G0_iw)
 
         G_iw_list.append(G_iw)
@@ -234,20 +235,23 @@ def upfold_Sigma(Sigma_iw_list_):
     return Sigma_iw_full_
 
 
+if MPI.COMM_WORLD.Get_rank() == 0:
+    filename = "data/" + "iteration_0"
+    print 'filename', filename
+    results =  HDFArchive(filename,'w')
+
 G0_iw_full = get_local_lattice_gf(mu, hk, np.zeros_like(iw_vec_full))
 
 G0_iw_list, t_ij_list = downfold_G0(G0_iw_full)
 
 if MPI.COMM_WORLD.Get_rank() == 0:
 
-    filename = "data/" + "iteration_0"
-    print 'filename', filename
+    for ni,i in enumerate(G0_iw_list):
+        print 'ni', ni
 
-    dataname = "G0_iw"
+        dataname = "G0_iw___at_" + str(ni)
 
-    from pytriqs.archive import HDFArchive
-    with HDFArchive(filename,'w') as results:
-        results[dataname] = G0_iw_list
+        results[dataname] = i
 
 G_iw_list = solve_aims(G0_iw_list)
 
