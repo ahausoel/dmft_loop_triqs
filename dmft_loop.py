@@ -154,8 +154,8 @@ def ctqmc_solver(h_int_, max_time_, G0_iw_):
     solve_params = {
             'h_int' : h_int_,
             'n_warmup_cycles' : 100,
-            #'n_cycles' : 1000000000,
-            'n_cycles' : 10,
+            'n_cycles' : 1000000000,
+            #'n_cycles' : 10,
             'max_time' : max_time_,
             'length_cycle' : 100,
             'move_double' : True,
@@ -235,23 +235,42 @@ def upfold_Sigma(Sigma_iw_list_):
     return Sigma_iw_full_
 
 
-if MPI.COMM_WORLD.Get_rank() == 0:
-    filename = "data/" + "iteration_0"
-    print 'filename', filename
-    results =  HDFArchive(filename,'w')
+def initialize_outputfile(iter_):
+
+    if MPI.COMM_WORLD.Get_rank() == 0:
+        if iter_<10:
+            filename = "data/" + "iteration_00" + str(iter_) + ".h5"
+        elif iter_<100:
+            filename = "data/" + "iteration_0" + str(iter_) + ".h5"
+        elif iter_<1000:
+            filename = "data/" + "iteration_" + str(iter_) + ".h5"
+        else:
+            print 'too many iterations...'
+            exit()
+
+        print 'filename', filename
+        results =  HDFArchive(filename,'w')
+
+        return results
+
+
+def write_qtty(qtty_, qtty_name_, res_file_):
+
+    if MPI.COMM_WORLD.Get_rank() == 0:
+        for ni,i in enumerate(qtty_):
+
+            dataname = qtty_name_ + "___at_" + str(ni)
+            res_file_[dataname] = i
+
+
+results = initialize_outputfile(0)
 
 G0_iw_full = get_local_lattice_gf(mu, hk, np.zeros_like(iw_vec_full))
 
 G0_iw_list, t_ij_list = downfold_G0(G0_iw_full)
 
-if MPI.COMM_WORLD.Get_rank() == 0:
 
-    for ni,i in enumerate(G0_iw_list):
-        print 'ni', ni
-
-        dataname = "G0_iw___at_" + str(ni)
-
-        results[dataname] = i
+write_qtty(G0_iw_list, "G0_iw", results)
 
 G_iw_list = solve_aims(G0_iw_list)
 
