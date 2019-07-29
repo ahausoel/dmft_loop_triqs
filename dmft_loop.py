@@ -34,8 +34,8 @@ import numpy as np
 beta = 10.0
 mu = 0.0
 
-U = 2.3
-J = 0.5
+U = 2.234
+J = 0.203
 
 N_atoms = 4
 N_bands = 3
@@ -155,7 +155,7 @@ def ctqmc_solver(h_int_, max_time_, G0_iw_):
             'h_int' : h_int_,
             'n_warmup_cycles' : 100,
             'n_cycles' : 1000000000,
-            #'n_cycles' : 10,
+            #'n_cycles' : 100,
             'max_time' : max_time_,
             'length_cycle' : 100,
             'move_double' : True,
@@ -274,6 +274,10 @@ write_qtty(G0_iw_list, "G0_iw", results)
 
 G_iw_list = solve_aims(G0_iw_list)
 
+write_qtty(G_iw_list, "G_iw", results)
+
 Sigma_iw_list = calculate_sigmas(G_iw_list, G0_iw_list)
+
+write_qtty(Sigma_iw_list, "Sigma_iw", results)
 
 Sigma_iw_full = upfold_Sigma(Sigma_iw_list)
