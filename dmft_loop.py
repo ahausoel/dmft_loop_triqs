@@ -281,3 +281,25 @@ Sigma_iw_list = calculate_sigmas(G_iw_list, G0_iw_list)
 write_qtty(Sigma_iw_list, "Sigma_iw", results)
 
 Sigma_iw_full = upfold_Sigma(Sigma_iw_list)
+
+results = initialize_outputfile(1)
+
+print 'iw_vec_full.shape', iw_vec_full.shape
+print 'Sigma_iw_full["bl"].data ',  Sigma_iw_full["bl"].data
+
+G0_iw_full = get_local_lattice_gf(mu, hk, Sigma_iw_full["bl"].data)
+
+G0_iw_list, t_ij_list = downfold_G0(G0_iw_full)
+
+
+write_qtty(G0_iw_list, "G0_iw", results)
+
+G_iw_list = solve_aims(G0_iw_list)
+
+write_qtty(G_iw_list, "G_iw", results)
+
+Sigma_iw_list = calculate_sigmas(G_iw_list, G0_iw_list)
+
+write_qtty(Sigma_iw_list, "Sigma_iw", results)
+
+Sigma_iw_full = upfold_Sigma(Sigma_iw_list)
