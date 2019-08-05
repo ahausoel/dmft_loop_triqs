@@ -37,7 +37,7 @@ mu = 0.0
 U = 2.234
 J = 0.203
 
-N_atoms = 4
+N_atoms = 2
 N_bands = 3
 
 ### still assumed that all atoms have same size and no noninteracting orbitals
@@ -48,7 +48,7 @@ n_iw = int(100 * beta)
 iw_mesh = MeshImFreq(beta, 'Fermion', n_iw)
 
 ### the hamiltonian
-hkfile = file("/home/hpc/pr94vu/di73miv/work/RECHNUNGEN/benchmarks/dmft_loop/wannier90_hk_2layers_t2gbasis.dat")
+hkfile = file("/gpfs/work/pr94vu/di73miv/RECHNUNGEN/rechnungen_claessen___NEU2/1_LAYER/PARA/ls/wannier90_hk_t2gbasis.dat_")
 hk, kpoints = read_hamiltonian(hkfile, spin_orbit=True)
 
 ### the lattice properties
@@ -284,8 +284,8 @@ Sigma_iw_full = upfold_Sigma(Sigma_iw_list)
 
 results = initialize_outputfile(1)
 
-print 'iw_vec_full.shape', iw_vec_full.shape
-print 'Sigma_iw_full["bl"].data ',  Sigma_iw_full["bl"].data
+#print 'iw_vec_full.shape', iw_vec_full.shape
+#print 'Sigma_iw_full["bl"].data ',  Sigma_iw_full["bl"].data
 
 G0_iw_full = get_local_lattice_gf(mu, hk, Sigma_iw_full["bl"].data)
 
