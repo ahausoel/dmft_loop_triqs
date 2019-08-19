@@ -49,6 +49,7 @@ J = 0.0
 N_atoms = 1
 N_bands = 1
 
+#data_folder = "data_1orb___U2___fast"
 data_folder = "data_1orb___U2"
 #data_folder = "data_2orbs_hz"
 #data_folder = "data_2orbs_hz_U0_V0_J0"
@@ -78,7 +79,7 @@ hk = hk.reshape(Nk, N_size_hk, N_size_hk)
 lda_orb_names = [ i for i in range(0,N_size_hk) ]
 gf_struct_full = [("bl",lda_orb_names)]
 print 'gf_struct_full', gf_struct_full
-G0_iw_full = BlockGf(mesh=iw_mesh, gf_struct=gf_struct_full)
+G_lattice_iw_full = BlockGf(mesh=iw_mesh, gf_struct=gf_struct_full)
 iw_vec_full = array([iw.value * np.eye(N_size_hk) for iw in iw_mesh])
 
 ### the impurity properties
@@ -119,14 +120,14 @@ def get_local_lattice_gf(mu_, hk_, sigma_):
     # sum of the quantity
     G0_iw_full_mat = MPI.COMM_WORLD.allreduce(my_G0, op=MPI.SUM)
 
-    G0_iw_full["bl"].data[...] = G0_iw_full_mat / float(Nk)
+    G_lattice_iw_full["bl"].data[...] = G0_iw_full_mat / float(Nk)
 
-    return G0_iw_full
+    return G_lattice_iw_full
 
 
-def downfold_G0(G0_iw_full_):
+def downfold_G_lattice(G0_iw_full_):
 
-    G0_iw_list = []
+    G_lattice_iw_list = []
     t_ij_list = []
 
     offset = 0
@@ -142,7 +143,7 @@ def downfold_G0(G0_iw_full_):
         G["bl"].data[...] = G0_iw_full_["bl"].data[:, offset:offset+size_block, offset:offset+size_block]
 
 
-        G0_iw_list.append(G)
+        G_lattice_iw_list.append(G)
 
         hk_mean = hk.mean(axis=0)
         t_ij = hk_mean[offset:offset+size_block, offset:offset+size_block]
@@ -151,7 +152,7 @@ def downfold_G0(G0_iw_full_):
 
         offset = offset + size_block
 
-    return G0_iw_list, t_ij_list
+    return G_lattice_iw_list, t_ij_list
 
 
 def ctqmc_solver(h_int_, max_time_, G0_iw_):
@@ -297,10 +298,14 @@ check_output_folder()
 
 results = initialize_outputfile(0)
 
-G0_iw_full = get_local_lattice_gf(mu, hk, np.zeros_like(iw_vec_full))
+G_lattice_iw_full = get_local_lattice_gf(mu, hk, np.zeros_like(iw_vec_full))
 
-G0_iw_list, t_ij_list = downfold_G0(G0_iw_full)
+G_lattice_iw_list, t_ij_list = downfold_G_lattice(G_lattice_iw_full)
 
+
+write_qtty(G_lattice_iw_list, "G_lattice_iw", results)
+
+G0_iw_list = G_lattice_iw_list
 
 write_qtty(G0_iw_list, "G0_iw", results)
 
@@ -316,22 +321,21 @@ Sigma_iw_full = upfold_Sigma(Sigma_iw_list)
 
 results = initialize_outputfile(1)
 
-#print 'iw_vec_full.shape', iw_vec_full.shape
-#print 'Sigma_iw_full["bl"].data ',  Sigma_iw_full["bl"].data
+##print 'iw_vec_full.shape', iw_vec_full.shape
+##print 'Sigma_iw_full["bl"].data ',  Sigma_iw_full["bl"].data
 
-G0_iw_full = get_local_lattice_gf(mu, hk, Sigma_iw_full["bl"].data)
+G_lattice_iw_full = get_local_lattice_gf(mu, hk, Sigma_iw_full["bl"].data)
 
-G0_iw_list, t_ij_list = downfold_G0(G0_iw_full)
+G_lattice_iw_list, t_ij_list = downfold_G_lattice(G_lattice_iw_full)
 
+#write_qtty(G0_iw_list, "G0_iw", results)
 
-write_qtty(G0_iw_list, "G0_iw", results)
+#G_iw_list = solve_aims(G0_iw_list)
 
-G_iw_list = solve_aims(G0_iw_list)
+#write_qtty(G_iw_list, "G_iw", results)
 
-write_qtty(G_iw_list, "G_iw", results)
+#Sigma_iw_list = calculate_sigmas(G_iw_list, G0_iw_list)
 
-Sigma_iw_list = calculate_sigmas(G_iw_list, G0_iw_list)
+#write_qtty(Sigma_iw_list, "Sigma_iw", results)
 
-write_qtty(Sigma_iw_list, "Sigma_iw", results)
-
-Sigma_iw_full = upfold_Sigma(Sigma_iw_list)
+#Sigma_iw_full = upfold_Sigma(Sigma_iw_list)
