@@ -34,6 +34,8 @@ import numpy as np
 #######################################################################
 ### here come the global parameters
 
+N_iter = 2
+
 max_time = 30
 #max_time = 125
 #max_time = 250
@@ -79,7 +81,6 @@ hk = hk.reshape(Nk, N_size_hk, N_size_hk)
 lda_orb_names = [ i for i in range(0,N_size_hk) ]
 gf_struct_full = [("bl",lda_orb_names)]
 print 'gf_struct_full', gf_struct_full
-G_lattice_iw_full = BlockGf(mesh=iw_mesh, gf_struct=gf_struct_full)
 iw_vec_full = array([iw.value * np.eye(N_size_hk) for iw in iw_mesh])
 
 ### the impurity properties
@@ -308,50 +309,48 @@ def write_qtty(qtty_, qtty_name_, res_file_):
             dataname = qtty_name_ + "___at_" + str(ni)
             res_file_[dataname] = i
 
+def get_zero_sigma_iw_list():
+
+    Sigma_iw_list = []
+
+    for i in range(0,N_atoms):
+
+        G = BlockGf(mesh=iw_mesh, gf_struct=gf_struct)
+        Sigma_iw_list.append(G)
+
+    return Sigma_iw_list
+
+
 check_output_folder()
 
-results = initialize_outputfile(0)
+### compute some start values; here one could also load values from an old calculation
+### full sigma with zeros
+Sigma_iw_full = BlockGf(mesh=iw_mesh, gf_struct=gf_struct_full)
 
-G_lattice_iw_full = get_local_lattice_gf(mu, hk, np.zeros_like(iw_vec_full))
+### list of sigmas with zeros
+Sigma_iw_list = get_zero_sigma_iw_list()
 
-G_lattice_iw_list, t_ij_list = downfold_G_lattice(G_lattice_iw_full)
+for iter in range(0,N_iter):
+
+    results = initialize_outputfile(iter)
+
+    G_lattice_iw_full = get_local_lattice_gf(mu, hk, Sigma_iw_full["bl"].data)
+
+    G_lattice_iw_list, t_ij_list = downfold_G_lattice(G_lattice_iw_full)
 
 
-write_qtty(G_lattice_iw_list, "G_lattice_iw", results)
+    write_qtty(G_lattice_iw_list, "G_lattice_iw", results)
 
-G0_iw_list = G_lattice_iw_list
+    G0_iw_list = compute_new_weiss_field(G_lattice_iw_list, Sigma_iw_list)
 
-write_qtty(G0_iw_list, "G0_iw", results)
+    write_qtty(G0_iw_list, "G0_iw", results)
 
-G_iw_list = solve_aims(G0_iw_list)
+    G_iw_list = solve_aims(G0_iw_list)
 
-write_qtty(G_iw_list, "G_iw", results)
+    write_qtty(G_iw_list, "G_iw", results)
 
-Sigma_iw_list = calculate_sigmas(G_iw_list, G0_iw_list)
+    Sigma_iw_list = calculate_sigmas(G_iw_list, G0_iw_list)
 
-write_qtty(Sigma_iw_list, "Sigma_iw", results)
+    write_qtty(Sigma_iw_list, "Sigma_iw", results)
 
-Sigma_iw_full = upfold_Sigma(Sigma_iw_list)
-
-results = initialize_outputfile(1)
-
-##print 'iw_vec_full.shape', iw_vec_full.shape
-##print 'Sigma_iw_full["bl"].data ',  Sigma_iw_full["bl"].data
-
-G_lattice_iw_full = get_local_lattice_gf(mu, hk, Sigma_iw_full["bl"].data)
-
-G_lattice_iw_list, t_ij_list = downfold_G_lattice(G_lattice_iw_full)
-
-G0_iw_list = compute_new_weiss_field(G_lattice_iw_list, Sigma_iw_list)
-
-write_qtty(G0_iw_list, "G0_iw", results)
-
-G_iw_list = solve_aims(G0_iw_list)
-
-write_qtty(G_iw_list, "G_iw", results)
-
-Sigma_iw_list = calculate_sigmas(G_iw_list, G0_iw_list)
-
-write_qtty(Sigma_iw_list, "Sigma_iw", results)
-
-Sigma_iw_full = upfold_Sigma(Sigma_iw_list)
+    Sigma_iw_full = upfold_Sigma(Sigma_iw_list)
