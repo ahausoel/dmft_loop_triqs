@@ -154,6 +154,20 @@ def downfold_G_lattice(G0_iw_full_):
 
     return G_lattice_iw_list, t_ij_list
 
+def compute_new_weiss_field(G_lattice_iw_list_, Sigma_iw_list_):
+
+    G0_iw_list = []
+
+    for g, s in zip(G_lattice_iw_list_, Sigma_iw_list_):
+
+        G0_iw = BlockGf(mesh=iw_mesh, gf_struct=gf_struct)
+
+        G0_iw << inverse(inverse(g) + s)
+
+        G0_iw_list.append(G0_iw)
+
+    return G0_iw_list
+
 
 def ctqmc_solver(h_int_, max_time_, G0_iw_):
 
@@ -328,14 +342,16 @@ G_lattice_iw_full = get_local_lattice_gf(mu, hk, Sigma_iw_full["bl"].data)
 
 G_lattice_iw_list, t_ij_list = downfold_G_lattice(G_lattice_iw_full)
 
-#write_qtty(G0_iw_list, "G0_iw", results)
+G0_iw_list = compute_new_weiss_field(G_lattice_iw_list, Sigma_iw_list)
 
-#G_iw_list = solve_aims(G0_iw_list)
+write_qtty(G0_iw_list, "G0_iw", results)
 
-#write_qtty(G_iw_list, "G_iw", results)
+G_iw_list = solve_aims(G0_iw_list)
 
-#Sigma_iw_list = calculate_sigmas(G_iw_list, G0_iw_list)
+write_qtty(G_iw_list, "G_iw", results)
 
-#write_qtty(Sigma_iw_list, "Sigma_iw", results)
+Sigma_iw_list = calculate_sigmas(G_iw_list, G0_iw_list)
 
-#Sigma_iw_full = upfold_Sigma(Sigma_iw_list)
+write_qtty(Sigma_iw_list, "Sigma_iw", results)
+
+Sigma_iw_full = upfold_Sigma(Sigma_iw_list)
