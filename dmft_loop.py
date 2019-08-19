@@ -15,6 +15,7 @@ import numpy.linalg as linalg
 #from pytriqs.archive import HDFArchive
 #from pytriqs.utility import mpi
 from triqs_cthyb import Solver, version
+#from w2dyn_cthyb import Solver
 
 from pytriqs.statistics.histograms import Histogram
 from pytriqs.archive import HDFArchive
@@ -24,37 +25,54 @@ from mpi4py import MPI
 
 #from tight_binding_model import *
 
-sys.path.append("/home/hpc/pr94vu/di73miv/work/w2dynamics___patrik_alexander_merge")
+#sys.path.append("/home/hpc/pr94vu/di73miv/work/w2dynamics___patrik_alexander_merge")
+sys.path.append("/gpfs/work/pr94vu/di73miv/w2dynamics_github___neu___cmake___REPRODAGAIN___KLON")
 from auxiliaries.input import read_hamiltonian
 
 import numpy as np
 
 #######################################################################
 ### here come the global parameters
+
+max_time = 30
+#max_time = 125
+#max_time = 250
+#max_time = 3600
+
 beta = 10.0
 mu = 0.0
 
-U = 2.234
-J = 0.203
+U = 2.0
+J = 0.0
+#V = 1.0
 
-N_atoms = 2
-N_bands = 3
+N_atoms = 1
+N_bands = 1
+
+data_folder = "data_1orb___U2"
+#data_folder = "data_2orbs_hz"
+#data_folder = "data_2orbs_hz_U0_V0_J0"
+#data_folder = "data_2orbs_hz_V0_J0___mu0"
+#data_folder = "data_2orbs_highstat"
 
 ### still assumed that all atoms have same size and no noninteracting orbitals
 spin_names = ['up', 'dn']
-orb_names = [0, 1, 2]
+orb_names = [0]
 
 n_iw = int(100 * beta)
 iw_mesh = MeshImFreq(beta, 'Fermion', n_iw)
 
 ### the hamiltonian
-hkfile = file("/gpfs/work/pr94vu/di73miv/RECHNUNGEN/rechnungen_claessen___NEU2/1_LAYER/PARA/ls/wannier90_hk_t2gbasis.dat_")
+hkfile = file("/home/hpc/pr94vu/di73miv/work/RECHNUNGEN/dmft_loop_triqs___1orb_hk___splitting/Hk_modified.dat")
 hk, kpoints = read_hamiltonian(hkfile, spin_orbit=True)
+print 'hk.shape', hk.shape
 
 ### the lattice properties
 Nk = kpoints.shape[0]
 tmp = hk.shape[1]
 N_size_hk = tmp*2
+print 'Nk', Nk
+print 'n_size_hk', N_size_hk
 hk = hk.reshape(Nk, N_size_hk, N_size_hk)
 
 lda_orb_names = [ i for i in range(0,N_size_hk) ]
@@ -143,7 +161,8 @@ def ctqmc_solver(h_int_, max_time_, G0_iw_):
             'beta' : beta,
             'gf_struct' : gf_struct,
             'n_iw' : n_iw,
-            'n_tau' : 100000
+            'n_tau' : 100000,
+            #'complex': True
             }
     S = Solver(**constr_params)
 
@@ -188,7 +207,6 @@ def solve_aims(G0_iw_list_):
         op_map = { (s,o): ('bl',i) for i, (s,o) in enumerate(product(spin_names, orb_names)) }
         h_int = h_int_kanamori(spin_names, orb_names, Umat, Upmat, J, off_diag=True, map_operator_structure=op_map)
 
-        max_time = 125
         G_iw = ctqmc_solver(h_int, max_time, G0_iw)
 
         G_iw_list.append(G_iw)
@@ -235,15 +253,28 @@ def upfold_Sigma(Sigma_iw_list_):
     return Sigma_iw_full_
 
 
+def check_output_folder():
+
+    if MPI.COMM_WORLD.Get_rank() == 0:
+        if not os.path.exists(data_folder):
+            os.makedirs(data_folder)
+            print 'make folder!'
+        else:
+            import shutil
+            shutil.rmtree(data_folder, ignore_errors=True)
+            os.makedirs(data_folder)
+            #os.remove(data_folder+"/*") 
+            print 'make folder new!'
+
 def initialize_outputfile(iter_):
 
     if MPI.COMM_WORLD.Get_rank() == 0:
         if iter_<10:
-            filename = "data/" + "iteration_00" + str(iter_) + ".h5"
+            filename = data_folder + "/iteration_00" + str(iter_) + ".h5"
         elif iter_<100:
-            filename = "data/" + "iteration_0" + str(iter_) + ".h5"
+            filename = data_folder + "/iteration_0" + str(iter_) + ".h5"
         elif iter_<1000:
-            filename = "data/" + "iteration_" + str(iter_) + ".h5"
+            filename = data_folder + "/iteration_" + str(iter_) + ".h5"
         else:
             print 'too many iterations...'
             exit()
@@ -262,6 +293,7 @@ def write_qtty(qtty_, qtty_name_, res_file_):
             dataname = qtty_name_ + "___at_" + str(ni)
             res_file_[dataname] = i
 
+check_output_folder()
 
 results = initialize_outputfile(0)
 
