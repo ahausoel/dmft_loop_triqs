@@ -14,8 +14,8 @@ import numpy.linalg as linalg
 
 #from pytriqs.archive import HDFArchive
 #from pytriqs.utility import mpi
-from triqs_cthyb import Solver, version
-#from w2dyn_cthyb import Solver
+#from triqs_cthyb import Solver, version
+from w2dyn_cthyb import Solver
 
 from pytriqs.statistics.histograms import Histogram
 from pytriqs.archive import HDFArchive
@@ -25,8 +25,8 @@ from mpi4py import MPI
 
 #from tight_binding_model import *
 
-#sys.path.append("/home/hpc/pr94vu/di73miv/work/w2dynamics___patrik_alexander_merge")
-sys.path.append("/gpfs/work/pr94vu/di73miv/w2dynamics_github___neu___cmake___REPRODAGAIN___KLON")
+sys.path.append("/home/hpc/pr94vu/di73miv/work/w2dynamics___patrik_alexander_merge")
+#sys.path.append("/gpfs/work/pr94vu/di73miv/w2dynamics_github___neu___cmake___REPRODAGAIN___KLON")
 from auxiliaries.input import read_hamiltonian
 
 import numpy as np
@@ -36,23 +36,27 @@ import numpy as np
 
 N_iter = 2
 
-max_time = 30
+#max_time = 15
+#max_time = 30
 #max_time = 125
 #max_time = 250
+max_time = 1800
 #max_time = 3600
 
 beta = 10.0
 mu = 0.0
 
-U = 2.0
-J = 0.0
-#V = 1.0
+U = 2.234
+J = 0.203
+#U = 0.0
+#J = 0.0
 
-N_atoms = 1
-N_bands = 1
+N_atoms = 2
+N_bands = 3
 
+data_folder = "data_iridate___test"
 #data_folder = "data_1orb___U2___fast"
-data_folder = "data_1orb___U2"
+#data_folder = "data_3orb___U2"
 #data_folder = "data_2orbs_hz"
 #data_folder = "data_2orbs_hz_U0_V0_J0"
 #data_folder = "data_2orbs_hz_V0_J0___mu0"
@@ -60,22 +64,27 @@ data_folder = "data_1orb___U2"
 
 ### still assumed that all atoms have same size and no noninteracting orbitals
 spin_names = ['up', 'dn']
-orb_names = [0]
+orb_names = [0, 1, 2]
 
 n_iw = int(100 * beta)
 iw_mesh = MeshImFreq(beta, 'Fermion', n_iw)
 
 ### the hamiltonian
-hkfile = file("/home/hpc/pr94vu/di73miv/work/RECHNUNGEN/dmft_loop_triqs___1orb_hk___splitting/Hk_modified.dat")
+#hkfile = file("/gpfs/work/pr94vu/di73miv/RECHNUNGEN/rechnungen_claessen___NEU2/1_LAYER/PARA/ls/wannier90_hk_t2gbasis.dat")
+hkfile = file("/gpfs/work/pr94vu/di73miv/RECHNUNGEN/rechnungen_claessen___NEU2/1_LAYER/PARA/ls/wannier90_hk_t2gbasis.dat_")
 hk, kpoints = read_hamiltonian(hkfile, spin_orbit=True)
-print 'hk.shape', hk.shape
+
+### the readin-function from w2dyn makes spin as fastest running index, 
+### but for triqs we need orbial to be fastest
+#hk = hk.transpose(0,2,1,4,3)
 
 ### the lattice properties
 Nk = kpoints.shape[0]
 tmp = hk.shape[1]
 N_size_hk = tmp*2
+print 'hk.shape', hk.shape
 print 'Nk', Nk
-print 'n_size_hk', N_size_hk
+print 'N_size_hk', N_size_hk
 hk = hk.reshape(Nk, N_size_hk, N_size_hk)
 
 lda_orb_names = [ i for i in range(0,N_size_hk) ]
@@ -90,6 +99,8 @@ gf_struct = [('bl', idx_lst)]
 def get_local_lattice_gf(mu_, hk_, sigma_):
 
     mu_mat = mu_ * np.eye(N_size_hk)
+
+    G_lattice_iw_full = BlockGf(mesh=iw_mesh, gf_struct=gf_struct_full)
 
     world = MPI.COMM_WORLD
     rank = world.Get_rank()
@@ -119,7 +130,22 @@ def get_local_lattice_gf(mu_, hk_, sigma_):
         my_G0 += tmp
 
     # sum of the quantity
-    G0_iw_full_mat = MPI.COMM_WORLD.allreduce(my_G0, op=MPI.SUM)
+    #MPI.COMM_WORLD.barrier()
+    #G0_iw_full_mat = MPI.COMM_WORLD.allreduce(my_G0, op=MPI.SUM)
+    #MPI.COMM_WORLD.barrier()
+
+    qtty_rank = np.asarray(my_G0)
+    G0_iw_full_mat = np.zeros_like(my_G0)
+
+    MPI.COMM_WORLD.Allreduce(qtty_rank, G0_iw_full_mat)
+    
+
+    #108     # make sure we have a numpy array
+    #109     qtty_rank = np.asarray(qtty_rank)
+    #110     qtty_mean = np.zeros_like(qtty_rank)
+    #111
+    #112     # sum of the quantity
+    #113     mpi_comm.Allreduce(qtty_rank, qtty_mean)
 
     G_lattice_iw_full["bl"].data[...] = G0_iw_full_mat / float(Nk)
 
@@ -178,7 +204,7 @@ def ctqmc_solver(h_int_, max_time_, G0_iw_):
             'gf_struct' : gf_struct,
             'n_iw' : n_iw,
             'n_tau' : 100000,
-            #'complex': True
+            'complex': True
             }
     S = Solver(**constr_params)
 
@@ -220,7 +246,8 @@ def solve_aims(G0_iw_list_):
 
         # ==== Interacting Hamiltonian ====
         Umat, Upmat = U_matrix_kanamori(len(orb_names), U_int=U, J_hund=J)
-        op_map = { (s,o): ('bl',i) for i, (s,o) in enumerate(product(spin_names, orb_names)) }
+        #op_map = { (s,o): ('bl',i) for i, (s,o) in enumerate(product(spin_names, orb_names)) }
+        op_map = { (s,o): ('bl',i) for i, (o,s) in enumerate(product(orb_names, spin_names)) }
         h_int = h_int_kanamori(spin_names, orb_names, Umat, Upmat, J, off_diag=True, map_operator_structure=op_map)
 
         G_iw = ctqmc_solver(h_int, max_time, G0_iw)
