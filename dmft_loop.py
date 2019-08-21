@@ -1,10 +1,8 @@
 #!/lrz/sys/tools/python/intelpython27_u4/intelpython2/bin/python
 
 import sys, os
-sys.path.append("/home/hpc/pr94vu/di73miv/work/RECHNUNGEN/benchmarks/common/")
-from util import *
 
-from pytriqs.gf import Gf, MeshImFreq, iOmega_n, inverse, MeshBrillouinZone, MeshProduct
+from pytriqs.gf import Gf, MeshImFreq, iOmega_n, inverse, MeshBrillouinZone, MeshProduct, BlockGf
 from pytriqs.lattice import BravaisLattice, BrillouinZone
 from pytriqs.operators import c, c_dag, n
 from pytriqs.operators.util import h_int_kanamori, U_matrix_kanamori
@@ -12,8 +10,6 @@ from itertools import product
 from numpy import matrix, array, diag, pi
 import numpy.linalg as linalg
 
-#from pytriqs.archive import HDFArchive
-#from pytriqs.utility import mpi
 #from triqs_cthyb import Solver, version
 from w2dyn_cthyb import Solver
 
