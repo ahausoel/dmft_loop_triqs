@@ -10,8 +10,8 @@ from itertools import product
 from numpy import matrix, array, diag, pi
 import numpy.linalg as linalg
 
-#from triqs_cthyb import Solver, version
-from w2dyn_cthyb import Solver
+from triqs_cthyb import Solver, version
+#from w2dyn_cthyb import Solver
 
 from pytriqs.statistics.histograms import Histogram
 from pytriqs.archive import HDFArchive
@@ -19,10 +19,7 @@ from pytriqs.archive import HDFArchive
 #import pytriqs.utility 
 from mpi4py import MPI
 
-#from tight_binding_model import *
-
 sys.path.append("/home/hpc/pr94vu/di73miv/work/w2dynamics___patrik_alexander_merge")
-#sys.path.append("/gpfs/work/pr94vu/di73miv/w2dynamics_github___neu___cmake___REPRODAGAIN___KLON")
 from auxiliaries.input import read_hamiltonian
 
 import numpy as np
@@ -32,12 +29,7 @@ import numpy as np
 
 N_iter = 2
 
-#max_time = 15
-#max_time = 30
-#max_time = 125
-#max_time = 250
-max_time = 1800
-#max_time = 3600
+max_time = 30
 
 beta = 10.0
 mu = 0.0
@@ -50,13 +42,7 @@ J = 0.203
 N_atoms = 2
 N_bands = 3
 
-data_folder = "data_iridate___test"
-#data_folder = "data_1orb___U2___fast"
-#data_folder = "data_3orb___U2"
-#data_folder = "data_2orbs_hz"
-#data_folder = "data_2orbs_hz_U0_V0_J0"
-#data_folder = "data_2orbs_hz_V0_J0___mu0"
-#data_folder = "data_2orbs_highstat"
+data_folder = "data_iridate___fast"
 
 ### still assumed that all atoms have same size and no noninteracting orbitals
 spin_names = ['up', 'dn']
@@ -66,8 +52,7 @@ n_iw = int(100 * beta)
 iw_mesh = MeshImFreq(beta, 'Fermion', n_iw)
 
 ### the hamiltonian
-#hkfile = file("/gpfs/work/pr94vu/di73miv/RECHNUNGEN/rechnungen_claessen___NEU2/1_LAYER/PARA/ls/wannier90_hk_t2gbasis.dat")
-hkfile = file("/gpfs/work/pr94vu/di73miv/RECHNUNGEN/rechnungen_claessen___NEU2/1_LAYER/PARA/ls/wannier90_hk_t2gbasis.dat_")
+hkfile = file("wannier90_hk_t2gbasis.dat")
 hk, kpoints = read_hamiltonian(hkfile, spin_orbit=True)
 
 ### the readin-function from w2dyn makes spin as fastest running index, 
@@ -125,7 +110,8 @@ def get_local_lattice_gf(mu_, hk_, sigma_):
 
         my_G0 += tmp
 
-    # sum of the quantity
+    ### sum of the quantity
+    ### this still crashes with more than one node..
     #MPI.COMM_WORLD.barrier()
     #G0_iw_full_mat = MPI.COMM_WORLD.allreduce(my_G0, op=MPI.SUM)
     #MPI.COMM_WORLD.barrier()
@@ -135,14 +121,6 @@ def get_local_lattice_gf(mu_, hk_, sigma_):
 
     MPI.COMM_WORLD.Allreduce(qtty_rank, G0_iw_full_mat)
     
-
-    #108     # make sure we have a numpy array
-    #109     qtty_rank = np.asarray(qtty_rank)
-    #110     qtty_mean = np.zeros_like(qtty_rank)
-    #111
-    #112     # sum of the quantity
-    #113     mpi_comm.Allreduce(qtty_rank, qtty_mean)
-
     G_lattice_iw_full["bl"].data[...] = G0_iw_full_mat / float(Nk)
 
     return G_lattice_iw_full
@@ -200,7 +178,8 @@ def ctqmc_solver(h_int_, max_time_, G0_iw_):
             'gf_struct' : gf_struct,
             'n_iw' : n_iw,
             'n_tau' : 100000,
-            'complex': True
+            'n_l' : 50,
+            #'complex': True
             }
     S = Solver(**constr_params)
 
@@ -216,14 +195,22 @@ def ctqmc_solver(h_int_, max_time_, G0_iw_):
             'max_time' : max_time_,
             'length_cycle' : 100,
             'move_double' : True,
-            'measure_pert_order' : True
+            'measure_pert_order' : True,
+            'measure_G_l' : True
             }
 
     #start = time.time()
     S.solve(**solve_params)
     #end = time.time()
 
-    return S.G_iw
+    print 'S.G_l', S.G_l
+    G_iw_from_legendre = G0_iw_.copy()
+    G_iw_from_legendre << LegendreToMatsubara(S.G_l)
+    #print 'G_iw_from_legendre', G_iw_from_legendre
+    #exit()
+
+    #return S.G_iw
+    return G_iw_from_legendre
 
 def solve_aims(G0_iw_list_):
 
