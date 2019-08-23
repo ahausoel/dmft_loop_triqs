@@ -2,7 +2,7 @@
 
 import sys, os
 
-from pytriqs.gf import Gf, MeshImFreq, iOmega_n, inverse, MeshBrillouinZone, MeshProduct, BlockGf
+from pytriqs.gf import Gf, MeshImFreq, iOmega_n, inverse, MeshBrillouinZone, MeshProduct, BlockGf, LegendreToMatsubara
 from pytriqs.lattice import BravaisLattice, BrillouinZone
 from pytriqs.operators import c, c_dag, n
 from pytriqs.operators.util import h_int_kanamori, U_matrix_kanamori
