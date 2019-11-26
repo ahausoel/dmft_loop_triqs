@@ -2,13 +2,15 @@
 
 import sys, os
 
-from pytriqs.gf import Gf, MeshImFreq, iOmega_n, inverse, MeshBrillouinZone, MeshProduct, BlockGf, LegendreToMatsubara
+from pytriqs.gf import Gf, MeshImFreq, MeshImTime, iOmega_n, inverse, MeshBrillouinZone, MeshProduct, BlockGf, LegendreToMatsubara
 from pytriqs.lattice import BravaisLattice, BrillouinZone
 from pytriqs.operators import c, c_dag, n
 from pytriqs.operators.util import h_int_kanamori, U_matrix_kanamori
 from itertools import product
 from numpy import matrix, array, diag, pi
 import numpy.linalg as linalg
+
+from pytriqs.utility import mpi
 
 from triqs_cthyb import Solver, version
 #from w2dyn_cthyb import Solver
@@ -17,22 +19,23 @@ from pytriqs.statistics.histograms import Histogram
 from pytriqs.archive import HDFArchive
 
 #import pytriqs.utility 
-from mpi4py import MPI
+#from mpi4py import MPI
 
 sys.path.append("/home/hpc/pr94vu/di73miv/work/w2dynamics___patrik_alexander_merge")
 from auxiliaries.input import read_hamiltonian
 
 import numpy as np
 
+import psutil
 #######################################################################
 ### here come the global parameters
 
-N_iter = 2
+N_iter = 1
 
-max_time = 30
+max_time = 0
 
-beta = 10.0
-mu = 0.0
+beta = 27
+mu = 7.37546
 
 U = 2.234
 J = 0.203
@@ -42,17 +45,17 @@ J = 0.203
 N_atoms = 2
 N_bands = 3
 
-data_folder = "data_iridate___fast"
+data_folder = "data_from_scratch"
 
 ### still assumed that all atoms have same size and no noninteracting orbitals
 spin_names = ['up', 'dn']
 orb_names = [0, 1, 2]
 
-n_iw = int(100 * beta)
+n_iw = 1000
 iw_mesh = MeshImFreq(beta, 'Fermion', n_iw)
 
 ### the hamiltonian
-hkfile = file("wannier90_hk_t2gbasis.dat")
+hkfile = file("wannier90_hk_t2gbasis.dat_")
 hk, kpoints = read_hamiltonian(hkfile, spin_orbit=True)
 
 ### the readin-function from w2dyn makes spin as fastest running index, 
@@ -77,15 +80,15 @@ iw_vec_full = array([iw.value * np.eye(N_size_hk) for iw in iw_mesh])
 idx_lst = list(range(len(spin_names) * len(orb_names)))
 gf_struct = [('bl', idx_lst)]
 
+world = mpi.world
+rank = world.Get_rank()
+size = world.Get_size()
+
 def get_local_lattice_gf(mu_, hk_, sigma_):
 
     mu_mat = mu_ * np.eye(N_size_hk)
 
     G_lattice_iw_full = BlockGf(mesh=iw_mesh, gf_struct=gf_struct_full)
-
-    world = MPI.COMM_WORLD
-    rank = world.Get_rank()
-    size = world.Get_size()
 
     nk_per_core = int(Nk)/int(size)
     rest = int(Nk)%int(size)
@@ -112,16 +115,19 @@ def get_local_lattice_gf(mu_, hk_, sigma_):
 
     ### sum of the quantity
     ### this still crashes with more than one node..
-    #MPI.COMM_WORLD.barrier()
-    #G0_iw_full_mat = MPI.COMM_WORLD.allreduce(my_G0, op=MPI.SUM)
-    #MPI.COMM_WORLD.barrier()
+    #qtty_rank = np.asarray(my_G0)
+    #G0_iw_full_mat = np.zeros_like(my_G0)
+    #MPI.COMM_WORLD.Allreduce(qtty_rank, G0_iw_full_mat)
 
+    #G_lattice_iw_full["bl"].data[...] = G0_iw_full_mat / float(Nk)
+
+    ### alternative version
     qtty_rank = np.asarray(my_G0)
-    G0_iw_full_mat = np.zeros_like(my_G0)
+    qtty_mean_root = np.zeros_like(iw_vec_full)
+    world.Reduce(qtty_rank, qtty_mean_root, root=0)
+    qtty_mean = world.bcast(qtty_mean_root, root=0)
 
-    MPI.COMM_WORLD.Allreduce(qtty_rank, G0_iw_full_mat)
-    
-    G_lattice_iw_full["bl"].data[...] = G0_iw_full_mat / float(Nk)
+    G_lattice_iw_full["bl"].data[...] = qtty_mean / float(Nk)
 
     return G_lattice_iw_full
 
@@ -177,9 +183,10 @@ def ctqmc_solver(h_int_, max_time_, G0_iw_):
             'beta' : beta,
             'gf_struct' : gf_struct,
             'n_iw' : n_iw,
-            'n_tau' : 100000,
+            #'n_tau' : 9999,   # w2dyn value
+            'n_tau' : 10000,   # triqs value
             'n_l' : 50,
-            #'complex': True
+            #'complex': True   # only necessary for w2dyn
             }
     S = Solver(**constr_params)
 
@@ -189,9 +196,9 @@ def ctqmc_solver(h_int_, max_time_, G0_iw_):
     # --------- Solve! ----------
     solve_params = {
             'h_int' : h_int_,
-            'n_warmup_cycles' : 100,
-            'n_cycles' : 1000000000,
-            #'n_cycles' : 100,
+            'n_warmup_cycles' : 10000,
+            #'n_cycles' : 1000000000,
+            'n_cycles' : 10000,
             'max_time' : max_time_,
             'length_cycle' : 100,
             'move_double' : True,
@@ -200,21 +207,43 @@ def ctqmc_solver(h_int_, max_time_, G0_iw_):
             }
 
     #start = time.time()
+    print 'running solver...'
+
+    process = psutil.Process(os.getpid())
+    print "memory info before: ", process.memory_info().rss/1024/1024, " MB"
+
     S.solve(**solve_params)
+    
+    process = psutil.Process(os.getpid())
+    print "memory info after: ", process.memory_info().rss/1024/1024, " MB"
+
+    print 'exited solver rank ', rank
     #end = time.time()
 
-    print 'S.G_l', S.G_l
     G_iw_from_legendre = G0_iw_.copy()
     G_iw_from_legendre << LegendreToMatsubara(S.G_l)
-    #print 'G_iw_from_legendre', G_iw_from_legendre
+    print 'G_iw_from_legendre', G_iw_from_legendre
+    ##exit()
+
+    ### giw from legendre, calculated within the interface
+    #print 'S.G_iw_from_leg', S.G_iw_from_leg
     #exit()
 
-    #return S.G_iw
-    return G_iw_from_legendre
+    n_tau = 200
+    tau_mesh2 = MeshImTime(beta, 'Fermion', n_tau)
+    my_G_tau = BlockGf(mesh=tau_mesh2, gf_struct=gf_struct)
+    print 'S.G_tau["bl"][:,:].data ',  S.G_tau["bl"][:,:].data.shape
+
+    my_G_tau["bl"][:,:].data[...] = S.G_tau["bl"][:,:].data.reshape(200, 50, N_bands*2, N_bands*2).mean(axis = 1)
+
+    #return my_G_tau, S.G_iw_from_leg
+    #return my_G_tau, S.G_iw
+    return my_G_tau, G_iw_from_legendre
 
 def solve_aims(G0_iw_list_):
 
     G_iw_list = []
+    G_tau_list = []
 
     for G0_iw in G0_iw_list_:
 
@@ -233,11 +262,12 @@ def solve_aims(G0_iw_list_):
         op_map = { (s,o): ('bl',i) for i, (o,s) in enumerate(product(orb_names, spin_names)) }
         h_int = h_int_kanamori(spin_names, orb_names, Umat, Upmat, J, off_diag=True, map_operator_structure=op_map)
 
-        G_iw = ctqmc_solver(h_int, max_time, G0_iw)
+        G_tau, G_iw = ctqmc_solver(h_int, max_time, G0_iw)
 
         G_iw_list.append(G_iw)
+        G_tau_list.append(G_tau)
 
-    return G_iw_list
+    return G_tau_list, G_iw_list
 
 
 ### now i calculate sigma
@@ -281,7 +311,7 @@ def upfold_Sigma(Sigma_iw_list_):
 
 def check_output_folder():
 
-    if MPI.COMM_WORLD.Get_rank() == 0:
+    if world.Get_rank() == 0:
         if not os.path.exists(data_folder):
             os.makedirs(data_folder)
             print 'make folder!'
@@ -294,7 +324,7 @@ def check_output_folder():
 
 def initialize_outputfile(iter_):
 
-    if MPI.COMM_WORLD.Get_rank() == 0:
+    if world.Get_rank() == 0:
         if iter_<10:
             filename = data_folder + "/iteration_00" + str(iter_) + ".h5"
         elif iter_<100:
@@ -308,12 +338,17 @@ def initialize_outputfile(iter_):
         print 'filename', filename
         results =  HDFArchive(filename,'w')
 
+        import inspect
+        import __main__
+        source = inspect.getsource(__main__)
+        results["source_file"] = source
+
         return results
 
 
 def write_qtty(qtty_, qtty_name_, res_file_):
 
-    if MPI.COMM_WORLD.Get_rank() == 0:
+    if world.Get_rank() == 0:
         for ni,i in enumerate(qtty_):
 
             dataname = qtty_name_ + "___at_" + str(ni)
@@ -330,15 +365,48 @@ def get_zero_sigma_iw_list():
 
     return Sigma_iw_list
 
+def readold_sigma_iw_list(oldfile):
+
+    if rank == 0:
+
+        print 'oldfile', oldfile
+        results =  HDFArchive(oldfile,'r')
+
+        Sigma_iw_list = []
+
+        n_iw_new = results["Sigma_iw___at_0/bl/mesh/size"]
+        iw_mesh_new = MeshImFreq(beta, 'Fermion', n_iw_new/2) 
+        ### n_iw for MeshImFreq is positive number of frequencies,
+        ### when read out from hdf-file it is total number of freqs.
+
+        for i in range(0,N_atoms):
+
+            dataname = "Sigma_iw___at_" + str(i)
+            tmp = results[dataname]
+
+            S = BlockGf(mesh=iw_mesh_new, gf_struct=gf_struct)
+            S["bl"].data[...] = tmp["bl"].data[...]
+
+            Sigma_iw_list.append(S)
+
+    else: 
+        Sigma_iw_list = None
+
+    Sigma_iw_list = world.bcast(Sigma_iw_list, root = 0)
+
+    return Sigma_iw_list
+
 
 check_output_folder()
 
-### compute some start values; here one could also load values from an old calculation
-### full sigma with zeros
+### start calculation from scratch
 Sigma_iw_full = BlockGf(mesh=iw_mesh, gf_struct=gf_struct_full)
-
-### list of sigmas with zeros
 Sigma_iw_list = get_zero_sigma_iw_list()
+
+### start from old calculation
+#Sigma_iw_list = readold_sigma_iw_list("data_from_scratch/iteration_027.h5")
+#Sigma_iw_full = upfold_Sigma(Sigma_iw_list)
+
 
 for iter in range(0,N_iter):
 
@@ -355,8 +423,9 @@ for iter in range(0,N_iter):
 
     write_qtty(G0_iw_list, "G0_iw", results)
 
-    G_iw_list = solve_aims(G0_iw_list)
+    G_tau_list, G_iw_list = solve_aims(G0_iw_list)
 
+    write_qtty(G_tau_list, "G_tau", results)
     write_qtty(G_iw_list, "G_iw", results)
 
     Sigma_iw_list = calculate_sigmas(G_iw_list, G0_iw_list)
