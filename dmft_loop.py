@@ -25,15 +25,34 @@ import numpy as np
 
 import psutil
 #######################################################################
-### here come the global parameters
+### switch solver
 
-solver = 'triqs'
-#solver = 'w2dyn'
+#solver = 'triqs'
+solver = 'w2dyn'
+
+### i for now allow this to be overwritten by an argument to the dmft_loop.py call
+import argparse
+parser = argparse.ArgumentParser(description="asdf")
+parser.add_argument('-w', '--w2dyn', default=False, action='store_true', help="Use w2dyn as solver.")
+parser.add_argument('-t', '--triqs', default=False, action='store_true', help="Use triqs as solver.")
+args = parser.parse_args()
+
+if args.w2dyn:
+    solver = "w2dyn"
+elif args.triqs:
+    solver = "triqs"
+
+if args.w2dyn and args.triqs:
+    print 'cannot use both solvers!'
+    exit()
 
 if solver == 'triqs':
     from triqs_cthyb import Solver, version
 elif solver == 'w2dyn':
     from w2dyn_cthyb import Solver
+
+#######################################################################
+### here come the global parameters
 
 N_iter = 1
 

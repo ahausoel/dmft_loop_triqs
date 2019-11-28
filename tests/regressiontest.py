@@ -3,7 +3,6 @@ from pytriqs.gf import Gf
 from pytriqs.archive import HDFArchive
 from pytriqs.utility.comparison_tests import assert_block_gfs_are_close
 
-os.system("../dmft_loop.py 1")
 
 #from pytriqs.utility.h5diff import h5diff
 #h5diff("data_from_scratch___ref/iteration_000.h5", "data_from_scratch/iteration_000.h5")
@@ -21,9 +20,8 @@ quantities = [
 "Sigma_iw___at_1" ]
 
 
-def check_quantity(quantity_name):
+def check_quantity(file_ref, quantity_name):
 
-    file_ref = "data_from_scratch___ref/iteration_000.h5"
     file_new = "data_from_scratch/iteration_000.h5"
 
     results_ref =  HDFArchive(file_ref,'r')
@@ -32,8 +30,20 @@ def check_quantity(quantity_name):
     quantity_ref = results_ref[quantity_name]
     quantity_new = results_new[quantity_name]
 
+    print 'checking quantity ', quantity_name, '...'
     assert_block_gfs_are_close(quantity_new, quantity_ref, precision = 1e-10), \
 
 
+print 'running triqs...'
+os.system("../dmft_loop.py --triqs &> /dev/null")
+
 for i in quantities:
-    check_quantity(i)
+    check_quantity("data_from_scratch___ref_triqs/iteration_000.h5", i)
+
+print 'running w2dyn'
+os.system("../dmft_loop.py --w2dyn &> /dev/null")
+
+for i in quantities:
+    check_quantity("data_from_scratch___ref_w2dyn/iteration_000.h5", i)
+
+print '=== all tests successful! >>>'
