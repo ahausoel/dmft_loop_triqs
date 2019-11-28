@@ -25,7 +25,8 @@ import numpy as np
 
 import psutil
 
-from dmft_parameters import *
+from parameters import *
+check_sanity_of_parameters()
 
 #######################################################################
 ### switch solver
@@ -58,7 +59,7 @@ elif solver == 'w2dyn':
 iw_mesh = MeshImFreq(beta, 'Fermion', n_iw)
 
 ### the hamiltonian
-hkfile = file("wannier90_hk_t2gbasis.dat_")
+hkfile = file(hkfilename)
 hk, kpoints = read_hamiltonian(hkfile, spin_orbit=True)
 
 ### the lattice properties
@@ -247,14 +248,15 @@ def ctqmc_solver(h_int_, max_time_, G0_iw_):
     #return my_G_tau, S.G_iw_from_leg
     #return my_G_tau, S.G_iw
     if solver == 'triqs':
-        return my_G_tau, G_iw_from_legendre
+        return my_G_tau, G_iw_from_legendre, S.average_sign
     else:
-        return my_G_tau, S.G_iw_from_leg
+        return my_G_tau, S.G_iw_from_leg, S.average_sign
 
 def solve_aims(G0_iw_list_):
 
     G_iw_list = []
     G_tau_list = []
+    average_sign_list = []
 
     for G0_iw in G0_iw_list_:
 
@@ -273,12 +275,13 @@ def solve_aims(G0_iw_list_):
         op_map = { (s,o): ('bl',i) for i, (o,s) in enumerate(product(orb_names, spin_names)) }
         h_int = h_int_kanamori(spin_names, orb_names, Umat, Upmat, J, off_diag=True, map_operator_structure=op_map)
 
-        G_tau, G_iw = ctqmc_solver(h_int, max_time, G0_iw)
+        G_tau, G_iw, average_sign = ctqmc_solver(h_int, max_time, G0_iw)
 
         G_iw_list.append(G_iw)
         G_tau_list.append(G_tau)
+        average_sign_list.append(average_sign)
 
-    return G_tau_list, G_iw_list
+    return G_tau_list, G_iw_list, average_sign_list
 
 
 ### now i calculate sigma
@@ -434,10 +437,11 @@ for iter in range(0,N_iter):
 
     write_qtty(G0_iw_list, "G0_iw", results)
 
-    G_tau_list, G_iw_list = solve_aims(G0_iw_list)
+    G_tau_list, G_iw_list, average_sign_list = solve_aims(G0_iw_list)
 
     write_qtty(G_tau_list, "G_tau", results)
     write_qtty(G_iw_list, "G_iw", results)
+    write_qtty(average_sign_list, "average_sign", results)
 
     Sigma_iw_list = calculate_sigmas(G_iw_list, G0_iw_list)
 
