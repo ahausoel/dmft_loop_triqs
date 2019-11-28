@@ -12,9 +12,6 @@ import numpy.linalg as linalg
 
 from pytriqs.utility import mpi
 
-from triqs_cthyb import Solver, version
-#from w2dyn_cthyb import Solver
-
 from pytriqs.statistics.histograms import Histogram
 from pytriqs.archive import HDFArchive
 
@@ -29,6 +26,14 @@ import numpy as np
 import psutil
 #######################################################################
 ### here come the global parameters
+
+solver = 'triqs'
+#solver = 'w2dyn'
+
+if solver == 'triqs':
+    from triqs_cthyb import Solver, version
+elif solver == 'w2dyn':
+    from w2dyn_cthyb import Solver
 
 N_iter = 1
 
@@ -179,15 +184,24 @@ def compute_new_weiss_field(G_lattice_iw_list_, Sigma_iw_list_):
 def ctqmc_solver(h_int_, max_time_, G0_iw_):
 
     # --------- Construct the CTHYB solver ----------
-    constr_params = {
-            'beta' : beta,
-            'gf_struct' : gf_struct,
-            'n_iw' : n_iw,
-            #'n_tau' : 9999,   # w2dyn value
-            'n_tau' : 10000,   # triqs value
-            'n_l' : 50,
-            #'complex': True   # only necessary for w2dyn
-            }
+    if solver == "triqs":
+        constr_params = {
+                'beta' : beta,
+                'gf_struct' : gf_struct,
+                'n_iw' : n_iw,
+                'n_tau' : 10000,   # triqs value
+                'n_l' : 50,
+                #'complex': True   # only necessary for w2dyn
+                }
+    elif solver == "w2dyn":
+        constr_params = {
+                'beta' : beta,
+                'gf_struct' : gf_struct,
+                'n_iw' : n_iw,
+                'n_tau' : 9999,   # w2dyn value
+                'n_l' : 50,
+                'complex': True   # only necessary for w2dyn
+                }
     S = Solver(**constr_params)
 
     # --------- Initialize G0_iw ----------
@@ -238,7 +252,10 @@ def ctqmc_solver(h_int_, max_time_, G0_iw_):
 
     #return my_G_tau, S.G_iw_from_leg
     #return my_G_tau, S.G_iw
-    return my_G_tau, G_iw_from_legendre
+    if solver == 'triqs':
+        return my_G_tau, G_iw_from_legendre
+    else:
+        return my_G_tau, S.G_iw_from_leg
 
 def solve_aims(G0_iw_list_):
 
