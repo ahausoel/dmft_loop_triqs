@@ -24,11 +24,11 @@ from auxiliaries.input import read_hamiltonian
 import numpy as np
 
 import psutil
+
+from dmft_parameters import *
+
 #######################################################################
 ### switch solver
-
-#solver = 'triqs'
-solver = 'w2dyn'
 
 ### i for now allow this to be overwritten by an argument to the dmft_loop.py call
 import argparse
@@ -51,40 +51,15 @@ if solver == 'triqs':
 elif solver == 'w2dyn':
     from w2dyn_cthyb import Solver
 
-#######################################################################
-### here come the global parameters
+### the readin-function from w2dyn makes spin as fastest running index, 
+### but for triqs we need orbial to be fastest
+#hk = hk.transpose(0,2,1,4,3)
 
-N_iter = 1
-
-max_time = 0
-
-beta = 27
-mu = 7.37546
-
-U = 2.234
-J = 0.203
-#U = 0.0
-#J = 0.0
-
-N_atoms = 2
-N_bands = 3
-
-data_folder = "data_from_scratch"
-
-### still assumed that all atoms have same size and no noninteracting orbitals
-spin_names = ['up', 'dn']
-orb_names = [0, 1, 2]
-
-n_iw = 1000
 iw_mesh = MeshImFreq(beta, 'Fermion', n_iw)
 
 ### the hamiltonian
 hkfile = file("wannier90_hk_t2gbasis.dat_")
 hk, kpoints = read_hamiltonian(hkfile, spin_orbit=True)
-
-### the readin-function from w2dyn makes spin as fastest running index, 
-### but for triqs we need orbial to be fastest
-#hk = hk.transpose(0,2,1,4,3)
 
 ### the lattice properties
 Nk = kpoints.shape[0]
