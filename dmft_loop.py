@@ -25,6 +25,10 @@ import numpy as np
 
 import psutil
 
+dirpath = os.getcwd()
+print("current directory is : " + dirpath)
+
+sys.path.insert(0,dirpath)
 from parameters import *
 check_sanity_of_parameters()
 
@@ -176,7 +180,7 @@ def compute_new_weiss_field(G_lattice_iw_list_, Sigma_iw_list_):
     return G0_iw_list
 
 
-def ctqmc_solver(h_int_, max_time_, G0_iw_):
+def ctqmc_solver(h_int_, G0_iw_):
 
     # --------- Construct the CTHYB solver ----------
     if solver == "triqs":
@@ -205,11 +209,11 @@ def ctqmc_solver(h_int_, max_time_, G0_iw_):
     # --------- Solve! ----------
     solve_params = {
             'h_int' : h_int_,
-            'n_warmup_cycles' : 10000,
+            'n_warmup_cycles' : n_warmup_cycles,
             #'n_cycles' : 1000000000,
-            'n_cycles' : 10000,
-            'max_time' : max_time_,
-            'length_cycle' : 100,
+            'n_cycles' : n_cycles,
+            'max_time' : max_time,
+            'length_cycle' : length_cycle,
             'move_double' : True,
             'measure_pert_order' : True,
             'measure_G_l' : True
@@ -275,7 +279,7 @@ def solve_aims(G0_iw_list_):
         op_map = { (s,o): ('bl',i) for i, (o,s) in enumerate(product(orb_names, spin_names)) }
         h_int = h_int_kanamori(spin_names, orb_names, Umat, Upmat, J, off_diag=True, map_operator_structure=op_map)
 
-        G_tau, G_iw, average_sign = ctqmc_solver(h_int, max_time, G0_iw)
+        G_tau, G_iw, average_sign = ctqmc_solver(h_int, G0_iw)
 
         G_iw_list.append(G_iw)
         G_tau_list.append(G_tau)

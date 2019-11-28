@@ -36,14 +36,16 @@ def check_quantity(file_ref, quantity_name):
 
 print 'running triqs...'
 os.system("../dmft_loop.py --triqs &> /dev/null")
+#os.system("../dmft_loop.py --triqs")
 
 for i in quantities:
     check_quantity("data_from_scratch___ref_triqs/iteration_000.h5", i)
 
-print 'running w2dyn'
+print 'running w2dyn...'
 os.system("../dmft_loop.py --w2dyn &> /dev/null")
+#os.system("../dmft_loop.py --w2dyn")
 
 for i in quantities:
     check_quantity("data_from_scratch___ref_w2dyn/iteration_000.h5", i)
 
-print '=== all tests successful! >>>'
+#print '=== all tests successful! >>>'

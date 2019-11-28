@@ -2,6 +2,7 @@
 
 #solver = 'triqs'
 solver = 'w2dyn'
+solver = 1
 
 N_iter = 1
 
@@ -24,8 +25,16 @@ orb_names = [0, 1, 2]
 
 n_iw = 1000
 
+### statistics
+max_time = 0
+n_warmup_cycles = 10000
+n_cycles = 10000
+length_cycle = 100
+
 ### the hamiltonian
 hkfilename = "wannier90_hk_t2gbasis.dat_"
+
+print 'parameters.py read!'
 
 def check_sanity_of_parameters():
 
@@ -70,4 +79,17 @@ def check_sanity_of_parameters():
         exit()
     if not len(spin_names) == 2:
         print 'system must have two spins!'
+        exit()
+
+    if not isinstance(max_time, int):
+        print 'parameter max_time must be integer!'
+        exit()
+    if not isinstance(n_warmup_cycles, int):
+        print 'parameter n_warmup_cycles must be integer!'
+        exit()
+    if not isinstance(n_cycles, int):
+        print 'parameter n_cycles must be integer!'
+        exit()
+    if not isinstance(length_cycle, int):
+        print 'parameter length_cycle must be integer!'
         exit()
